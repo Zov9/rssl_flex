@@ -145,4 +145,6 @@ class WideResNet(nn.Module):
         out = self.relu(self.bn1(out))
         out = F.adaptive_avg_pool2d(out, 1)
         out = out.view(-1, self.channels)
+        return out
+    def classify(self,out):
         return self.fc(out)
