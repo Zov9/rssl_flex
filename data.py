@@ -6,6 +6,8 @@ import torchvision.transforms as T
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10, CIFAR100, SVHN, STL10
 
+from typing import List
+
 from random import choices
 from collections import defaultdict
 from augmentation import Augmenter
@@ -137,7 +139,7 @@ class PreProcessor:
 
 
 def get_dataloaders(data: str = 'cifar10', num_X: int = 250,
-                    include_x_in_u=True, augs: list[int] = [1, 2],
+                    include_x_in_u=True, augs: List[int] = [1, 2],
                     batch_size: int = 64, mu: float = 7):
     """Get dataloaders."""
     # train dataset
