@@ -29,6 +29,7 @@ def train_step(model,
                learning_status,
                mapping,
                device,
+               iteration,
                worst_k
                ):
     """Train one epoch."""
@@ -116,14 +117,14 @@ def train_step(model,
             batch_size = xw_pred.shape[0]
             int_mask = torch.ones_like(indicator)
             int_mask1 = torch.ones(batch_size,device=device)
-
-            for i, p in enumerate(hard_label):
-                if p.item() in worst_k:
-                    int_mask[i] = 1.4
-            #print('targets_x',targets_x)
-            for i, p in enumerate(y):
-                if p.item() in worst_k:
-                    int_mask1[i] = 1.4
+            if iteration>50000:
+                for i, p in enumerate(hard_label):
+                    if p.item() in worst_k:
+                        int_mask[i] = 1.4
+                #print('targets_x',targets_x)
+                for i, p in enumerate(y):
+                    if p.item() in worst_k:
+                        int_mask1[i] = 1.4
 
             ls = (criterion(xw_pred, y.to(device)) * int_mask1).mean()
             total_loss = ls
@@ -236,6 +237,7 @@ def train_network(args):
                                        mapping=mapping,
                                        criterion=criterion,
                                        device=device,
+                                       iteration = args.iterations,
                                        worst_k=worst_k,
                                        )
 
