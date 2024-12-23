@@ -1,0 +1,1 @@
+python main.py --mode 'train' --data 'cifar10' --num_X 400 --augs 1 2  --nesterov --amp --include_x_in_u --save_path ./model-store/1223try
