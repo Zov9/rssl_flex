@@ -3,7 +3,7 @@
 
 from config import get_parameters
 from train import train_network
-from evaluate import evaluate_network
+from evaluate1 import evaluate_network
 
 
 if __name__ == "__main__":
