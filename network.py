@@ -28,10 +28,10 @@ def get_network(network='squeezenet', num_classes=10):
         model = shufflenet_v2_x0_5(num_classes=num_classes)
 
     elif network == 'wrn_28_2':
-        model = WideResNet(10, 28, 2)
+        model = WideResNet(num_classes, 28, 2)
 
     elif network == 'wrn_28_8':
-        model = WideResNet(10, 28, 8)
+        model = WideResNet(num_classes, 28, 8)
 
     return model
 
