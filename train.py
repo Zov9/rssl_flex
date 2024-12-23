@@ -47,12 +47,25 @@ def train_step(model,
             (uw, us), _, u_i = sample_u
 
             inputs = torch.cat([xw, uw, us], dim=0)
-            outputs = model(inputs.to(device))
+            #outputs = model(inputs.to(device))
 
-            xw_pred, uw_pred, us_pred = torch.split(outputs,
+            #xw_pred, uw_pred, us_pred = torch.split(outputs,
+            #                                        [xw.shape[0],
+            #                                         uw.shape[0],
+            #                                         us.shape[0]])
+
+            feats = model(inputs.to(device))
+
+            q,q1,q2 = torch.split(outputs,
                                                     [xw.shape[0],
                                                      uw.shape[0],
                                                      us.shape[0]])
+
+            
+
+            xw_pred=model.classify(q)
+            uw_pred=model.classify(q1)
+            us_pred=model.classify(q2) 
 
             # supervised loss
             ls = criterion(xw_pred, y.to(device)).mean()
@@ -225,3 +238,4 @@ def train_network(args):
                             'Train Acc': Acc,
                             'Test Acc': test_Acc},
                       step=global_step)
+
