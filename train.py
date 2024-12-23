@@ -28,9 +28,7 @@ def train_step(model,
                N,
                learning_status,
                mapping,
-               device,
-               worst_k
-               ):
+               device):
     """Train one epoch."""
     global global_step
 
@@ -40,7 +38,6 @@ def train_step(model,
     cls_thresholds = torch.zeros(num_classes, device=device)
 
     model.train()
-    
     for sample_x, sample_u in zip(X, U):
         with torch.autocast(device_type='cuda',
                             dtype=torch.float16,
@@ -71,17 +68,12 @@ def train_step(model,
             us_pred=model.classify(q2) 
 
             # supervised loss
-            
+            ls = criterion(xw_pred, y.to(device)).mean()
+            total_loss = ls
 
             # compute a learning status
             counter = Counter(learning_status)
-            if num_classes == 10:
-                wk = 3
-            else:
-                wk = 20
 
-            smallest_pairs = sorted(counter.items(), key=lambda x: x[1])[:wk]
-            worst_k = [pair[0] for pair in smallest_pairs]
             # normalize the status
             num_unused = counter[-1]
             if num_unused != N:
@@ -111,25 +103,9 @@ def train_step(model,
 
             # unsupervised loss
             batch_threshold = torch.index_select(cls_thresholds, 0, hard_label)
-            indicator = max_prob >= batch_threshold
+            indicator = max_prob > batch_threshold
 
-            batch_size = xw_pred.shape[0]
-            int_mask = torch.ones_like(indicator)
-            int_mask1 = torch.ones(batch_size,device=device)
-
-            for i, p in enumerate(hard_label):
-                if p.item() in worst_k:
-                    int_mask[i] = 1.4
-            #print('targets_x',targets_x)
-            for i, p in enumerate(y):
-                if p.item() in worst_k:
-                    int_mask1[i] = 1.4
-
-            ls = (criterion(xw_pred, y.to(device)) * int_mask1).mean()
-            total_loss = ls
-            
-
-            lu = (criterion(us_pred, hard_label) * indicator * int_mask).mean()
+            lu = (criterion(us_pred, hard_label) * indicator).mean()
             total_loss += lu * unsupervised_weight
 
         # optimization
@@ -157,7 +133,7 @@ def train_step(model,
     Lu = logs['Lu'].avg
     Mask = logs['Mask'].avg
 
-    return Acc, Ls, Lu, Mask, worst_k
+    return Acc, Ls, Lu, Mask
 
 
 def train_network(args):
@@ -166,7 +142,7 @@ def train_network(args):
         import wandb
     global global_step
     global_step = 0
-    worst_k= []
+
     device = torch.device('cuda')
     if args.amp:
         scaler = torch.cuda.amp.GradScaler()
@@ -200,7 +176,6 @@ def train_network(args):
     if args.mode == 'resume':
         optimizer.load_state_dict(ckpt['optimizer'])
         scheduler.load_state_dict(ckpt['scheduler'])
-        worst_k = check_point['worst_k']
 
     # labeled, unlabeled and test data
     X, U, T = get_dataloaders(data=args.data,
@@ -211,7 +186,6 @@ def train_network(args):
                               mu=args.mu)
 
     # Number of unlabeled data
-    
     N = len(U.dataset.indices)
     if args.mode == 'resume' and 'learning_status' in ckpt:
         learning_status = ckpt['learning_status']
@@ -220,7 +194,7 @@ def train_network(args):
 
     n_iter = 1024
     for epoch in range(start_iter//n_iter, n_iter):
-        Acc, Ls, Lu, Mask,worst_k = train_step(model=model,
+        Acc, Ls, Lu, Mask = train_step(model=model,
                                        ema=ema,
                                        X=X,
                                        U=U,
@@ -235,9 +209,7 @@ def train_network(args):
                                        learning_status=learning_status,
                                        mapping=mapping,
                                        criterion=criterion,
-                                       device=device,
-                                       worst_k=worst_k,
-                                       )
+                                       device=device)
 
         test_Acc = evaluate_step(ema.shadow, T, device)
 
@@ -253,8 +225,7 @@ def train_network(args):
                 'scheduler': scheduler.state_dict(),
                 'args': args,
                 'learning_status': learning_status,
-                'iteration': global_step,
-                'worst_k':worst_k
+                'iteration': global_step
                 }
         torch.save(check_point, args.save_path / 'ckpt.pth')
         if epoch % 10 == 0:
@@ -267,4 +238,3 @@ def train_network(args):
                             'Train Acc': Acc,
                             'Test Acc': test_Acc},
                       step=global_step)
-
